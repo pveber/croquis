@@ -1,0 +1,10 @@
+(library
+ (name croquis)
+ (public_name croquis)
+ (libraries core_kernel otfm vg vg.pdf)
+ (private_modules Linux_libertine Vg_text))
+
+(rule
+  (targets linux_libertine.ml)
+  (action (run bash ocamlify_font.sh))
+  (deps (file ocamlify_font.sh) (file LinLibertine_R.otf)))
