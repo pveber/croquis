@@ -2,7 +2,7 @@ open Core
 open Croquis
 
 let single_letter () =
-  Picture.text ~x:0. ~y:0. "a"
+  Picture.text ~x:5. ~y:0. "croquis"
 
 let demo name f =
   name,

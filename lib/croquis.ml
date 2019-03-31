@@ -149,10 +149,8 @@ module Picture = struct
         )
     | Void -> Box2.empty
     | Text t ->
-      Box2.move
-        (Size2.v t.x t.y)
-        (Vg_text.bbox ~size:t.size default_font (* FIXME: allow other fonts *) t.text)
-
+      Vg_text.bbox ~size:t.size default_font (* FIXME: allow other fonts *) t.text
+      |> Box2.move (V2.v t.x t.y)
 
   module Pileup_layout = struct
     type block = {
@@ -311,30 +309,6 @@ module Picture = struct
       |> I.move (Viewport.v2scale vp t.x t.y)
 end
 
-(* let rec xmin = function
- *   | Void -> Float.infinity
- *   | Blend xs ->
- *     List.map xs ~f:xmin
- *     |> List.min_elt ~compare:Float.compare
- *     |> Option.value ~default:Float.infinity
- *   | Rect r -> r.xmin
- *   | Path p ->
- *     List.fold p.points ~init:Float.infinity ~f:(fun accu (x,_) -> Float.min accu x)
- *   | Text t -> t.x
- * 
- * let rec xmax = function
- *   | Void -> Float.neg_infinity
- *   | Blend xs ->
- *     List.map xs ~f:xmax
- *     |> List.max_elt ~compare:Float.compare
- *     |> Option.value ~default:Float.neg_infinity
- *   | Rect r -> r.xmax
- *   | Path p ->
- *     List.fold p.points ~init:Float.neg_infinity ~f:(fun accu (x,_) -> Float.max accu x)
- *   | Text t ->
- *     let width = Vg_text.text_length font ~font_size:t.size t.text in
- *     t.x +. width *)
-
 module Layout = struct
   type t =
     | Simple of Picture.t
@@ -359,18 +333,10 @@ module Layout = struct
     | None, None -> size ~width:10. view
 
   let render_pdf ?width ?height (Simple pic) fn =
-    let view = box2_scale 1.1 (Picture.bbox pic) in
+    let view = box2_scale 1.01 (Picture.bbox pic) in
     let size = size ?width ?height view in
-    printf "%f %f %f %f\n" (Box2.minx view) (Box2.maxx view) (Box2.miny view) (Box2.maxy view) ;
-    printf "%f %f\n" (fst size) (snd size) ;
-    let vp =
-      Viewport.linear
-        ~xlim:Box2.(minx view, maxx view)
-        ~ylim:Box2.(miny view, maxy view)
-        ~size
-    in
-    let image = Picture.render vp pic in
-    let font = match Vg_text.Font.load_from_file "/home/pveber/w/arrepress/croquis/LinLibertine_R.otf" with
+    let image = Picture.render Viewport.id pic in
+    let font = match Vg_text.Font.load_from_string Linux_libertine.regular with
       | Ok x -> x
       | _ -> assert false
     in
@@ -384,7 +350,7 @@ module Layout = struct
       in
       Out_channel.with_file fn ~f:(fun oc ->
           let r = Vgr.create (Vgr_pdf.target ~font ()) (`Channel oc) in
-          ignore (Vgr.render r (`Image (V2.of_tuple size, (Box2.v (V2.v 0. 0.) (V2.of_tuple size)), image))) ;
+          ignore (Vgr.render r (`Image (V2.of_tuple size, view, image))) ;
           ignore (Vgr.render r `End)
         )
     | _ -> assert false
