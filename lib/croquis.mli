@@ -87,8 +87,6 @@ module Picture : sig
     y:float ->
     string ->
     t
-
-  val scale : Viewport.t -> t -> t
 end
 
 module Layout : sig

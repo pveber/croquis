@@ -55,102 +55,129 @@ let default_font =
   | _ -> assert false
 
 module Picture = struct
-  type t =
-    | Rect of {
-        draw : Color.t option ;
-        fill : Color.t option ;
-        thickness : thickness ;
-        xmin : float ;
-        xmax : float ;
-        ymin : float ;
-        ymax : float ;
-      }
-    | Path of {
-        col : Color.t ;
-        thickness : thickness ;
-        points : (float * float) list ;
-        arrow_head : bool ;
-      }
-    | Blend of t list
-    | Void
-    | Text of {
-        col : Color.t ;
-        size : float ;
-        x : float ;
-        y : float ;
-        text : string ;
-      }
-
-  let void = Void
+  class type t = object
+    method render : Viewport.t -> image
+    method bbox : Box2.t
+  end
 
   let rect ?(vp = Viewport.id) ?draw ?fill ?(thickness = `normal) ~xmin ~xmax ~ymin ~ymax () =
-    Rect { draw ; fill ; thickness ;
-           xmin = Viewport.scale_x vp xmin ;
-           xmax = Viewport.scale_x vp xmax ;
-           ymin = Viewport.scale_y vp ymin ;
-           ymax = Viewport.scale_y vp ymax }
+    let xmin = Viewport.scale_x vp xmin in
+    let xmax = Viewport.scale_x vp xmax in
+    let ymin = Viewport.scale_y vp ymin in
+    let ymax = Viewport.scale_y vp ymax in
+    object
+      method render vp =
+        let sw = Viewport.v2scale vp xmin ymin in
+        let nw = Viewport.v2scale vp xmin ymax in
+        let ne = Viewport.v2scale vp xmax ymax in
+        let se = Viewport.v2scale vp xmax ymin in
+        let p =
+          P.empty
+          |> P.sub sw
+          |> P.line nw
+          |> P.line ne
+          |> P.line se
+          |> P.line sw
+        in
+        let outline = match draw with
+          | None -> I.void
+          | Some col ->
+            let area = `O { P.o with P.width = thickness_value thickness ;
+                                     P.cap = `Square } in
+            I.cut ~area p (I.const col)
+        in
+        let background = match fill with
+          | None -> I.void
+          | Some col ->
+            I.cut ~area:`Anz p (I.const col)
+        in
+        I.blend outline background
 
-  let blend xs = Blend xs
-  let blend2 x y = Blend [ x ; y ]
+      method bbox =
+        Box2.v (V2.v xmin ymin) (V2.v (xmax -. xmin) (ymax -. ymin))
+    end
+
+  let void =
+    object
+      method render _ = I.void
+      method bbox = Box2.empty
+    end
+
+  let blend xs =
+    object
+      method render vp =
+        List.fold xs ~init:I.void ~f:(fun acc p -> I.blend acc (p#render vp))
+
+      method bbox =
+        List.map xs ~f:(fun x -> x#bbox)
+        |> List.fold ~init:Box2.empty ~f:Box2.union
+    end
+
+  let blend2 x y = blend [ x ; y ]
 
   let path ?(vp = Viewport.id) ?(col = Color.black) ?(thickness = `normal) ?(arrow_head = false) points =
-    Path { col ; thickness ; arrow_head ;
-           points = List.map points ~f:(fun (x, y) -> Viewport.scale_x vp x, Viewport.scale_y vp y) }
+    let points = List.map points ~f:(fun (x, y) -> Viewport.scale_x vp x, Viewport.scale_y vp y) in
+    object
+      method render vp =
+        let body = match points with
+          | [] | [ _ ] -> I.void
+          | (ox, oy) :: (_ :: _ as t) ->
+            let path =
+              List.fold t ~init:(P.empty |> P.sub (Viewport.v2scale vp ox oy)) ~f:(fun acc (x, y) ->
+                  acc |> P.line (Viewport.v2scale vp x y)
+                )
+            in
+            let area = `O { P.o with P.width = thickness_value thickness } in
+            I.cut ~area path (I.const col)
+        and head = match arrow_head with
+          | false -> I.void
+          | true ->
+            match List.rev points with
+            | [] | [ _ ] -> I.void
+            | (x1, y1) :: (x2, y2) :: _ ->
+              let tip = Viewport.v2scale vp x1 y1 in
+              let top = Viewport.v2scale vp x2 y2 in
+              let delta_colinear = V2.(sub top tip |> unit) in
+              let delta_ortho = V2.(delta_colinear |> ortho |> smul 0.3) in
+              let tap = V2.(add tip delta_colinear) in
+              let path =
+                P.empty
+                |> P.sub tip
+                |> P.line V2.(add tap delta_ortho)
+                |> P.line V2.(sub tap delta_ortho)
+              in
+              I.cut ~area:`Anz path (I.const col)
+        in
+        I.blend head body
 
-  let translate ?(dx = 0.) ?(dy = 0.) t =
-    let rec aux = function
-      | Rect r ->
-        Rect {
-          r with xmin = r.xmin +. dx ;
-                 xmax = r.xmax +. dx ;
-                 ymin = r.ymin +. dy ;
-                 ymax = r.ymax +. dy ;
-        }
-      | Path p ->
-        Path { p with points = List.map p.points ~f:(fun (x, y) -> x +. dx, y +. dy) }
-      | Blend xs -> Blend (List.map xs ~f:aux)
-      | Void -> Void
-      | Text t -> Text { t with x = t.x +. dx ; y = t.y +. dy }
-    in
-    aux t
-
-  let scale vp t =
-    let rec aux = function
-      | Rect r ->
-        Rect {
-          r with xmin = Viewport.scale_x vp r.xmin ;
-                 xmax = Viewport.scale_x vp r.xmax ;
-                 ymin = Viewport.scale_y vp r.ymin ;
-                 ymax = Viewport.scale_y vp r.ymax ;
-        }
-      | Path p ->
-        Path { p with points = List.map p.points ~f:(fun (x, y) -> Viewport.scale_x vp x, Viewport.scale_y vp y) }
-      | Blend xs -> Blend (List.map xs ~f:aux)
-      | Void -> Void
-      | Text t -> Text { t with x = Viewport.scale_x vp t.x ; y = Viewport.scale_y vp t.y }
-    in
-    aux t
+      method bbox = (* FIXME: take arrow head into account *)
+        List.fold points ~init:Box2.empty ~f:(fun acc (x, y) ->
+            Box2.add_pt acc (V2.v x y)
+          )
+    end
 
   let text ?(vp = Viewport.id) ?(col = Color.black) ?(size = 12.) ~x ~y text =
-    Text { col ; size ;
-           x = Viewport.scale_x vp x ;
-           y = Viewport.scale_y vp y ;
-           text }
+    let x = Viewport.scale_x vp x in
+    let y = Viewport.scale_y vp y in
+    object
+      method render vp =
+        Vg_text.cut ~col:col ~size:size default_font text
+        |> fst
+        |> I.move (Viewport.v2scale vp x y)
 
-  let rec bbox = function
-    | Rect { xmin ; xmax ; ymin ; ymax ; _ } ->
-      Box2.v (V2.v xmin ymin) (V2.v (xmax -. xmin) (ymax -. ymin))
-    | Blend xs ->
-      List.map xs ~f:bbox
-      |> List.fold ~init:Box2.empty ~f:Box2.union
-    | Path p -> (* FIXME: take arrow head into account *)
-      List.fold p.points ~init:Box2.empty ~f:(fun acc (x, y) ->
-          Box2.add_pt acc (V2.v x y)
-        )
-    | Void -> Box2.empty
-    | Text t ->
-      Vg_text.bbox ~size:t.size default_font (* FIXME: allow other fonts *) t.text
-      |> Box2.move (V2.v t.x t.y)
+      method bbox =
+        Vg_text.bbox ~size:size default_font (* FIXME: allow other fonts *) text
+        |> Box2.move (V2.v x y)
+    end
+
+
+  let translate ?(dx = 0.) ?(dy = 0.) t =
+    object
+      method bbox = Box2.move (V2.v dx dy) (t#bbox)
+      method render vp =
+        t#render vp
+        |> I.move (V2.v dx dy)
+    end
 
   module Pileup_layout = struct
     type block = {
@@ -172,7 +199,7 @@ module Picture = struct
       Caml.compare Box2.(minx b1, maxx b1) Box2.(minx b2, maxx b2)
 
     let make_block contents = {
-      bbox = bbox contents ;
+      bbox = contents#bbox ;
       contents ;
     }
 
@@ -217,7 +244,7 @@ module Picture = struct
       List.concat layers
   end
 
-  let pileup xs = Blend (Pileup_layout.make xs)
+  let pileup xs = blend (Pileup_layout.make xs)
 
   module VStack_layout = struct
     let make items =
@@ -238,75 +265,8 @@ module Picture = struct
 
   let vstack ?(align = `none) xs =
     match align with
-    | `none -> Blend (VStack_layout.make xs)
+    | `none -> blend (VStack_layout.make xs)
     | _ -> assert false (* not implemented *)
-
-
-  let rec render vp = function
-    | Rect { draw ; fill ; thickness ; xmin ; xmax ; ymin ; ymax } ->
-      let sw = Viewport.v2scale vp xmin ymin in
-      let nw = Viewport.v2scale vp xmin ymax in
-      let ne = Viewport.v2scale vp xmax ymax in
-      let se = Viewport.v2scale vp xmax ymin in
-      let p =
-        P.empty
-        |> P.sub sw
-        |> P.line nw
-        |> P.line ne
-        |> P.line se
-        |> P.line sw
-      in
-      let outline = match draw with
-        | None -> I.void
-        | Some col ->
-          let area = `O { P.o with P.width = thickness_value thickness ;
-                                   P.cap = `Square } in
-          I.cut ~area p (I.const col)
-      in
-      let background = match fill with
-        | None -> I.void
-        | Some col ->
-          I.cut ~area:`Anz p (I.const col)
-      in
-      I.blend outline background
-    | Blend xs ->
-      List.fold xs ~init:I.void ~f:(fun acc p -> I.blend acc (render vp p))
-    | Path p ->
-      let body = match p.points with
-        | [] | [ _ ] -> I.void
-        | (ox, oy) :: (_ :: _ as t) ->
-          let path =
-            List.fold t ~init:(P.empty |> P.sub (Viewport.v2scale vp ox oy)) ~f:(fun acc (x, y) ->
-                acc |> P.line (Viewport.v2scale vp x y)
-              )
-          in
-          let area = `O { P.o with P.width = thickness_value p.thickness } in
-          I.cut ~area path (I.const p.col)
-      and head = match p.arrow_head with
-        | false -> I.void
-        | true ->
-          match List.rev p.points with
-          | [] | [ _ ] -> I.void
-          | (x1, y1) :: (x2, y2) :: _ ->
-            let tip = Viewport.v2scale vp x1 y1 in
-            let top = Viewport.v2scale vp x2 y2 in
-            let delta_colinear = V2.(sub top tip |> unit) in
-            let delta_ortho = V2.(delta_colinear |> ortho |> smul 0.3) in
-            let tap = V2.(add tip delta_colinear) in
-            let path =
-              P.empty
-              |> P.sub tip
-              |> P.line V2.(add tap delta_ortho)
-              |> P.line V2.(sub tap delta_ortho)
-            in
-            I.cut ~area:`Anz path (I.const p.col)
-      in
-      I.blend head body
-    | Void -> I.void
-    | Text t ->
-      Vg_text.cut ~col:t.col ~size:t.size default_font t.text
-      |> fst
-      |> I.move (Viewport.v2scale vp t.x t.y)
 end
 
 module Layout = struct
@@ -314,11 +274,6 @@ module Layout = struct
     | Simple of Picture.t
 
   let simple x = Simple x
-
-  let box2_scale alpha b =
-    Box2.v_mid
-      (Box2.mid b)
-      (V2.smul alpha (Box2.size b))
 
   let rec size ?width ?height view =
     let res w h = w *. 10., h *.10. in
@@ -332,10 +287,19 @@ module Layout = struct
       res w h
     | None, None -> size ~width:10. view
 
+  let box2_padding alpha b =
+    let w = Box2.w b in
+    let h = Box2.h b in
+    let delta = Float.(min w h * alpha) in
+    Box2.v_mid
+      (Box2.mid b)
+      (V2.v (w +. delta) (h +. delta))
+
+
   let render_pdf ?width ?height (Simple pic) fn =
-    let view = box2_scale 1.01 (Picture.bbox pic) in
+    let view = box2_padding 0.01 pic#bbox in
     let size = size ?width ?height view in
-    let image = Picture.render Viewport.id pic in
+    let image = pic#render Viewport.id in
     let font = match Vg_text.Font.load_from_string Linux_libertine.regular with
       | Ok x -> x
       | _ -> assert false
