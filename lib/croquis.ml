@@ -115,45 +115,69 @@ module Picture = struct
 
   let blend2 x y = blend [ x ; y ]
 
+  let arrow_head_geometry points =
+    match List.rev points with
+    | [] | [ _ ] -> None
+    | (x1, y1) :: (x2, y2) :: _ ->
+      let tip = V2.v x1 y1 in
+      let top = V2.v x2 y2 in
+      let delta_colinear = V2.(sub top tip |> unit) in
+      let delta_ortho = V2.(delta_colinear |> ortho |> smul 0.3) in
+      let bottom = V2.(add tip delta_colinear) in
+      let wing_up = V2.add bottom delta_ortho in
+      let wing_down = V2.sub bottom delta_ortho in
+      Some (
+        object
+          method bottom = bottom
+          method tip = tip
+          method wing_up = wing_up
+          method wing_down = wing_down
+        end
+      )
+
   let path ?(vp = Viewport.id) ?(col = Color.black) ?(thickness = `normal) ?(arrow_head = false) points =
     let points = List.map points ~f:(fun (x, y) -> Viewport.scale_x vp x, Viewport.scale_y vp y) in
+    let arrow_head = if arrow_head then arrow_head_geometry points else None in
     object
       method render vp =
-        let body = match points with
+        let body = match List.rev points with
           | [] | [ _ ] -> I.void
           | (ox, oy) :: (_ :: _ as t) ->
+            let tip = match arrow_head with
+              | None -> V2.v ox oy
+              | Some h -> h#bottom
+            in
             let path =
-              List.fold t ~init:(P.empty |> P.sub (Viewport.v2scale vp ox oy)) ~f:(fun acc (x, y) ->
-                  acc |> P.line (Viewport.v2scale vp x y)
+              List.fold t ~init:(P.empty |> P.sub tip) ~f:(fun acc (x, y) ->
+                  P.line (Viewport.v2scale vp x y) acc
                 )
             in
             let area = `O { P.o with P.width = thickness_value thickness } in
             I.cut ~area path (I.const col)
         and head = match arrow_head with
-          | false -> I.void
-          | true ->
-            match List.rev points with
-            | [] | [ _ ] -> I.void
-            | (x1, y1) :: (x2, y2) :: _ ->
-              let tip = Viewport.v2scale vp x1 y1 in
-              let top = Viewport.v2scale vp x2 y2 in
-              let delta_colinear = V2.(sub top tip |> unit) in
-              let delta_ortho = V2.(delta_colinear |> ortho |> smul 0.3) in
-              let tap = V2.(add tip delta_colinear) in
-              let path =
-                P.empty
-                |> P.sub tip
-                |> P.line V2.(add tap delta_ortho)
-                |> P.line V2.(sub tap delta_ortho)
+          | None -> I.void
+          | Some head ->
+            let path =
+              P.empty
+              |> P.sub head#tip
+              |> P.line head#wing_up
+              |> P.line head#wing_down
               in
               I.cut ~area:`Anz path (I.const col)
         in
         I.blend head body
 
-      method bbox = (* FIXME: take arrow head into account *)
-        List.fold points ~init:Box2.empty ~f:(fun acc (x, y) ->
-            Box2.add_pt acc (V2.v x y)
-          )
+      method bbox =
+        let init = Box2.empty in
+        let init =
+          List.fold points ~init ~f:(fun acc (x, y) ->
+              Box2.add_pt acc (V2.v x y)
+            )
+        in
+        match arrow_head with
+        | None -> init
+        | Some head ->
+          List.fold [ head#tip ; head#wing_up ; head#wing_down ] ~init ~f:Box2.add_pt
     end
 
   let text ?(vp = Viewport.id) ?(col = Color.black) ?(size = 12.) ~x ~y text =
