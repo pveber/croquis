@@ -159,15 +159,20 @@ module Picture = struct
   let text ?(vp = Viewport.id) ?(col = Color.black) ?(size = 12.) ~x ~y text =
     let x = Viewport.scale_x vp x in
     let y = Viewport.scale_y vp y in
+    let font = default_font in (* FIXME: allow other fonts *)
+    let delta bb =
+      Box2.w bb /. 2., Vg_text.Font.(ascender font +. descender font) /. 2.
+    in
     object
       method render vp =
-        Vg_text.cut ~col:col ~size:size default_font text
-        |> fst
-        |> I.move (Viewport.v2scale vp x y)
+        let img, bb = Vg_text.cut ~col:col ~size:size font text in
+        let dx, dy =  delta bb in
+        I.move (Viewport.v2scale vp (x -. dx) (y -. dy)) img
 
       method bbox =
-        Vg_text.bbox ~size:size default_font (* FIXME: allow other fonts *) text
-        |> Box2.move (V2.v x y)
+        let bb = Vg_text.bbox ~size:size font text in
+        let dx, dy = delta bb in
+        Box2.move (V2.v (x -. dx) (y -. dy)) bb
     end
 
 
