@@ -39,10 +39,24 @@ type thickness = [
   | `thick
 ]
 
+type point_shape = [
+  | `bullet
+  | `circle
+]
+
 module Picture : sig
   type t
 
   val void : t
+
+  val points :
+    ?vp:Viewport.t ->
+    ?col:Color.t ->
+    ?shape:point_shape ->
+    x:float array ->
+    y:float array ->
+    unit ->
+    t
 
   val rect :
     ?vp:Viewport.t ->
@@ -87,6 +101,24 @@ module Picture : sig
     y:float ->
     string ->
     t
+end
+
+module Plot : sig
+  type t
+
+  val points :
+    ?title:string ->
+    ?col:Color.t ->
+    ?shape:[`bullet | `circle] ->
+    float array ->
+    float array ->
+    t
+
+  val render :
+    ?width:float ->
+    ?height:float ->
+    t list ->
+    Picture.t
 end
 
 module Layout : sig

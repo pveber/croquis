@@ -4,6 +4,13 @@ open Core_kernel
 
 type point = float * float
 
+module Float_array = struct
+  let min xs = 
+    Array.fold xs ~init:Float.max_value ~f:Float.min
+  let max xs = 
+    Array.fold xs ~init:Float.min_value ~f:Float.max
+end
+
 module Scaling = struct
   type 'a t = 'a -> float
 
@@ -49,6 +56,11 @@ let thickness_value = function
   | `normal -> 0.01
   | `thick -> 0.1
 
+type point_shape = [
+  | `bullet
+  | `circle
+]
+
 let default_font =
   match Vg_text.Font.load_from_string Linux_libertine.regular with
   | Ok f -> f
@@ -60,6 +72,30 @@ module Picture = struct
     method bbox : Box2.t
   end
 
+  let points ?(vp = Viewport.id) ?(col = Color.black) ?(shape = `bullet) ~x ~y () =
+    let xmin = Viewport.scale_x vp (Float_array.min x) in
+    let xmax = Viewport.scale_x vp (Float_array.max x) in
+    let ymin = Viewport.scale_y vp (Float_array.min y) in
+    let ymax = Viewport.scale_y vp (Float_array.max y) in
+    object
+      method render _vp =
+        let area = match shape with
+          | `bullet -> `Anz
+          | `circle ->
+            `O { P.o with P.width = thickness_value `normal }
+        in
+        let mark =
+          I.cut ~area (P.empty |> P.circle V2.zero 0.1) (I.const col)
+        in
+        Array.map2_exn x y ~f:(fun x y ->
+            I.move (V2.v x y) mark
+          )
+        |> Array.fold ~init:I.void ~f:I.blend
+
+      method bbox =
+        Box2.v (V2.v xmin ymin) (V2.v (xmax -. xmin) (ymax -. ymin))
+    end
+    
   let rect ?(vp = Viewport.id) ?draw ?fill ?(thickness = `normal) ~xmin ~xmax ~ymin ~ymax () =
     let xmin = Viewport.scale_x vp xmin in
     let xmax = Viewport.scale_x vp xmax in
@@ -296,6 +332,60 @@ module Picture = struct
     match align with
     | `none -> blend (VStack_layout.make xs)
     | _ -> assert false (* not implemented *)
+end
+
+module Plot = struct
+  type t =
+    | Points of {
+        title : string option ;
+        col : Color.t ;
+        shape : point_shape ;
+        x : float array ;
+        y : float array ;
+      }
+
+  let points ?title ?(col = Color.black) ?(shape = `bullet) x y =
+    Points { title ; col ; shape ; x ; y }
+
+  let min_x = function
+    | Points { x ; _ } -> Float_array.min x
+
+  let max_x = function
+    | Points { x ; _ } -> Float_array.min x
+
+  let min_y = function
+    | Points { y ; _ } -> Float_array.min y
+
+  let max_y = function
+    | Points { y ; _ } -> Float_array.max y
+
+  let bb plot =
+    Box2.v
+      (V2.v (min_x plot) (min_y plot))
+      (V2.v (max_x plot) (max_y plot))
+
+  let render_points vp ~x ~y ~col =
+    Picture.points ~vp ~col ~x ~y ()
+
+  let render ?(width = 10.) ?(height =6.) plots =
+    match plots with
+    | [] -> Picture.void
+    | _ ->
+      let bb =
+        List.map plots ~f:bb
+        |> List.reduce_exn ~f:Box2.union
+      in
+      let vp =
+        Viewport.linear
+          ~xlim:Box2.(minx bb, maxx bb)
+          ~ylim:Box2.(miny bb, maxy bb)
+          ~size:(width, height)
+      in
+      List.map plots ~f:(function
+          | Points { x ; y ; col ; _ } ->
+            render_points vp ~x ~y ~col
+        )
+      |> Picture.blend
 end
 
 module Layout = struct
