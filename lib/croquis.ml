@@ -53,6 +53,7 @@ type thickness = [
 ]
 
 let thickness_value = function
+  | `thin -> 0.001
   | `normal -> 0.01
   | `thick -> 0.1
 
@@ -82,7 +83,7 @@ module Picture = struct
         let area = match shape with
           | `bullet -> `Anz
           | `circle ->
-            `O { P.o with P.width = thickness_value `normal }
+            `O { P.o with P.width = thickness_value `thin }
         in
         let mark =
           I.cut ~area (P.empty |> P.circle V2.zero 0.1) (I.const col)
@@ -366,9 +367,6 @@ module Plot = struct
       (V2.v minx miny)
       (V2.v (max_x plot -. minx) (max_y plot -. miny))
 
-  let render_points vp ~x ~y ~col =
-    Picture.points ~vp ~col ~x ~y ()
-
   let render ?(width = 10.) ?(height = 6.) plots =
     match plots with
     | [] -> Picture.void
@@ -384,8 +382,8 @@ module Plot = struct
           ~size:(width, height)
       in
       List.map plots ~f:(function
-          | Points { x ; y ; col ; _ } ->
-            render_points vp ~x ~y ~col
+          | Points { x ; y ; col ; shape ; _ } ->
+            Picture.points ~vp ~col ~x ~y ~shape ()
         )
       |> Picture.blend
 end
