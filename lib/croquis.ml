@@ -69,7 +69,7 @@ let default_font =
 
 module Picture = struct
   class type t = object
-    method render : Viewport.t -> image
+    method render : image
     method bbox : Box2.t
   end
 
@@ -79,7 +79,7 @@ module Picture = struct
     let ymin = Viewport.scale_y vp (Float_array.min y) in
     let ymax = Viewport.scale_y vp (Float_array.max y) in
     object
-      method render _vp =
+      method render =
         let area = match shape with
           | `bullet -> `Anz
           | `circle ->
@@ -103,7 +103,7 @@ module Picture = struct
     let ymin = Viewport.scale_y vp ymin in
     let ymax = Viewport.scale_y vp ymax in
     object
-      method render vp =
+      method render =
         let sw = Viewport.v2scale vp xmin ymin in
         let nw = Viewport.v2scale vp xmin ymax in
         let ne = Viewport.v2scale vp xmax ymax in
@@ -136,14 +136,14 @@ module Picture = struct
 
   let void =
     object
-      method render _ = I.void
+      method render = I.void
       method bbox = Box2.empty
     end
 
   let blend xs =
     object
-      method render vp =
-        List.fold xs ~init:I.void ~f:(fun acc p -> I.blend acc (p#render vp))
+      method render =
+        List.fold xs ~init:I.void ~f:(fun acc p -> I.blend acc p#render)
 
       method bbox =
         List.map xs ~f:(fun x -> x#bbox)
@@ -176,7 +176,7 @@ module Picture = struct
     let points = List.map points ~f:(fun (x, y) -> Viewport.scale_x vp x, Viewport.scale_y vp y) in
     let arrow_head = if arrow_head then arrow_head_geometry points else None in
     object
-      method render vp =
+      method render =
         let body = match List.rev points with
           | [] | [ _ ] -> I.void
           | (ox, oy) :: (_ :: _ as t) ->
@@ -225,7 +225,7 @@ module Picture = struct
       Box2.w bb /. 2., Vg_text.Font.(ascender font +. descender font) /. 2.
     in
     object
-      method render vp =
+      method render =
         let img, bb = Vg_text.cut ~col:col ~size:size font text in
         let dx, dy =  delta bb in
         I.move (Viewport.v2scale vp (x -. dx) (y -. dy)) img
@@ -240,8 +240,8 @@ module Picture = struct
   let translate ?(dx = 0.) ?(dy = 0.) t =
     object
       method bbox = Box2.move (V2.v dx dy) (t#bbox)
-      method render vp =
-        t#render vp
+      method render =
+        t#render
         |> I.move (V2.v dx dy)
     end
 
@@ -418,7 +418,7 @@ module Layout = struct
   let render_pdf ?width ?height (Simple pic) fn =
     let view = box2_padding 0.01 pic#bbox in
     let size = size ?width ?height view in
-    let image = pic#render Viewport.id in
+    let image = pic#render in
     let font = match Vg_text.Font.load_from_string Linux_libertine.regular with
       | Ok x -> x
       | _ -> assert false
