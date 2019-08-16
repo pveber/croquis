@@ -88,7 +88,7 @@ module Picture = struct
           I.cut ~area (P.empty |> P.circle V2.zero 0.1) (I.const col)
         in
         Array.map2_exn x y ~f:(fun x y ->
-            I.move (V2.v x y) mark
+            I.move (Viewport.v2scale vp x y) mark
           )
         |> Array.fold ~init:I.void ~f:I.blend
 
@@ -351,7 +351,7 @@ module Plot = struct
     | Points { x ; _ } -> Float_array.min x
 
   let max_x = function
-    | Points { x ; _ } -> Float_array.min x
+    | Points { x ; _ } -> Float_array.max x
 
   let min_y = function
     | Points { y ; _ } -> Float_array.min y
@@ -360,14 +360,16 @@ module Plot = struct
     | Points { y ; _ } -> Float_array.max y
 
   let bb plot =
+    let minx = min_x plot in
+    let miny = min_y plot in
     Box2.v
-      (V2.v (min_x plot) (min_y plot))
-      (V2.v (max_x plot) (max_y plot))
+      (V2.v minx miny)
+      (V2.v (max_x plot -. minx) (max_y plot -. miny))
 
   let render_points vp ~x ~y ~col =
     Picture.points ~vp ~col ~x ~y ()
 
-  let render ?(width = 10.) ?(height =6.) plots =
+  let render ?(width = 10.) ?(height = 6.) plots =
     match plots with
     | [] -> Picture.void
     | _ ->

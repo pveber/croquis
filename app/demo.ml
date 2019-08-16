@@ -1,5 +1,5 @@
-open Core
 open Gg
+open Core
 open Croquis
 
 let single_letter () =
@@ -12,6 +12,18 @@ let vstack () =
     text ~x:5. ~y:0. "croquis" ;
   ]
 
+let scatter_plot () =
+  let n = 100 in
+  let x = Array.init n ~f:(fun i -> float (i - n / 2) /. 20.) in
+  let y1 = Array.map x ~f:(fun x -> Float.cos x +. Random.float 0.1) in
+  let y2 = Array.map x ~f:(fun x -> Float.sin x +. Random.float 0.1) in
+  Plot.(
+    render [
+      points ~shape:`bullet ~col:Color.blue x y1 ;
+      points ~shape:`circle ~col:Color.green x y2 ;
+    ]
+  )
+
 let demo name f =
   name,
   Command.basic ~summary:name (Command.Param.return (fun () ->
@@ -19,6 +31,7 @@ let demo name f =
     ))
   
 let command = Command.group ~summary:"Demo application for croquis" [
+    demo "scatter-plot" scatter_plot ;
     demo "single-letter" single_letter ;
     demo "vstack" vstack ;
   ]
