@@ -62,10 +62,17 @@ type point_shape = [
   | `circle
 ]
 
-let default_font =
-  match Vg_text.Font.load_from_string Linux_libertine.regular with
-  | Ok f -> f
-  | _ -> assert false
+module Font = struct
+  type t = Vg_text.Font.t
+
+  let ascender = Vg_text.Font.ascender
+  let descender = Vg_text.Font.descender
+
+  let default =
+    match Vg_text.Font.load_from_string Linux_libertine.regular with
+    | Ok f -> f
+    | _ -> assert false
+end
 
 module Picture = struct
   class type t = object
@@ -220,7 +227,7 @@ module Picture = struct
   let text ?(vp = Viewport.id) ?(col = Color.black) ?(size = 12.) ~x ~y text =
     let x = Viewport.scale_x vp x in
     let y = Viewport.scale_y vp y in
-    let font = default_font in (* FIXME: allow other fonts *)
+    let font = Font.default in (* FIXME: allow other fonts *)
     let delta bb =
       Box2.w bb /. 2., Vg_text.Font.(ascender font +. descender font) /. 2.
     in
@@ -426,7 +433,7 @@ module Layout = struct
     match Vgr_pdf.otf_font (Vg_text.Font.data font) with
     | Ok otf_font ->
       let font f =
-        if Vg_text.Font.name font = f.Font.name then
+        if Vg_text.Font.name font = f.Vg.Font.name then
           otf_font
         else
           Vgr_pdf.font f

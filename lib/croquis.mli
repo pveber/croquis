@@ -34,6 +34,14 @@ module Viewport : sig
   val scale : t -> point -> point
 end
 
+module Font : sig
+  type t
+
+  val ascender : t -> float
+  val descender : t -> float
+  val default : t
+end
+
 type thickness = [
   | `normal
   | `thick
