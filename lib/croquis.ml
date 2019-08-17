@@ -67,6 +67,7 @@ module Font = struct
 
   let ascender = Vg_text.Font.ascender
   let descender = Vg_text.Font.descender
+  let glyph_bbox = Vg_text.Font.glyph_bbox
 
   let default =
     match Vg_text.Font.load_from_string Linux_libertine.regular with

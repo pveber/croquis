@@ -29,6 +29,7 @@ module Font = struct
     cmap : int Cmap.t;           (* Maps unicode scalar values to glyphs. *)
     advs : int Gmap.t;             (* Maps glyph to advances in em space. *)
     kern : int Gmap.t Gmap.t;    (* Maps glyph pairs to kern adjustement. *)
+    head : Otfm.head ;
     hhea : Otfm.hhea ;
     units_per_em : int;                        (* Number of units per em. *)
   }
@@ -38,7 +39,13 @@ module Font = struct
 
   let ascender fi = float fi.hhea.hhea_ascender /. float fi.units_per_em
   let descender fi = float fi.hhea.hhea_descender /. float fi.units_per_em
-
+  let glyph_bbox fi =
+    let { Otfm.head_xmin ; head_xmax ; head_ymin ; head_ymax ; _ } = fi.head in
+    let xmin = float head_xmin /. float fi.units_per_em in
+    let xmax = float head_xmax /. float fi.units_per_em in
+    let ymin = float head_ymin /. float fi.units_per_em in
+    let ymax = float head_ymax /. float fi.units_per_em in
+    Box2.v (V2.v xmin ymin) (V2.v (xmax -. xmin) (ymax -. ymin))
 
   let string_of_file inf =
     try
@@ -91,7 +98,7 @@ module Font = struct
       Otfm.hhea d                                 >>= fun hhea ->
       let font_name = match font_name with None -> "Unknown" | Some n -> n in
       let units_per_em = head.Otfm.head_units_per_em in
-      Ok { font_name ; raw; cmap; advs; kern; hhea ; units_per_em }
+      Ok { font_name ; raw; cmap; advs; kern; hhea ; units_per_em ; head }
     in
     (r : (_, Otfm.error) result :> (_, [> Otfm.error]) result)
 
