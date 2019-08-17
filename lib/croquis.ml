@@ -63,16 +63,23 @@ type point_shape = [
 ]
 
 module Font = struct
-  type t = Vg_text.Font.t
+  type t = Vg_text.Font.t Lazy.t
 
-  let ascender = Vg_text.Font.ascender
-  let descender = Vg_text.Font.descender
-  let glyph_bbox = Vg_text.Font.glyph_bbox
+  let ascender x = Vg_text.Font.ascender (Lazy.force x)
+  let descender x = Vg_text.Font.descender (Lazy.force x)
+  let glyph_bbox x = Vg_text.Font.glyph_bbox (Lazy.force x)
 
-  let default =
-    match Vg_text.Font.load_from_string Linux_libertine.regular with
-    | Ok f -> f
-    | _ -> assert false
+  let embedded_load s =
+    Lazy.from_fun (fun () -> 
+        match Vg_text.Font.load_from_string s with
+        | Ok f -> f
+        | _ -> assert false
+      )
+
+  let linux_libertine_regular = embedded_load Linux_libertine.contents
+  let helvetica_bold = embedded_load Helvetica_bold.contents
+
+  let default = linux_libertine_regular
 end
 
 module Picture = struct
@@ -225,10 +232,10 @@ module Picture = struct
           List.fold [ head#tip ; head#wing_up ; head#wing_down ] ~init ~f:Box2.add_pt
     end
 
-  let text ?(vp = Viewport.id) ?(col = Color.black) ?(size = 12.) ~x ~y text =
+  let text ?(vp = Viewport.id) ?(col = Color.black) ?(size = 12.) ?(font = Font.default) ~x ~y text =
+    let font = Lazy.force font in
     let x = Viewport.scale_x vp x in
     let y = Viewport.scale_y vp y in
-    let font = Font.default in (* FIXME: allow other fonts *)
     let delta bb =
       Box2.w bb /. 2., Vg_text.Font.(ascender font +. descender font) /. 2.
     in
@@ -427,10 +434,7 @@ module Layout = struct
     let view = box2_padding 0.01 pic#bbox in
     let size = size ?width ?height view in
     let image = pic#render in
-    let font = match Vg_text.Font.load_from_string Linux_libertine.regular with
-      | Ok x -> x
-      | _ -> assert false
-    in
+    let font = Lazy.force Font.linux_libertine_regular in
     match Vgr_pdf.otf_font (Vg_text.Font.data font) with
     | Ok otf_font ->
       let font f =

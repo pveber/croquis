@@ -41,6 +41,8 @@ module Font : sig
   val descender : t -> float
   val glyph_bbox : t -> box2
   val default : t
+  val helvetica_bold : t
+  val linux_libertine_regular : t
 end
 
 type thickness = [
@@ -106,6 +108,7 @@ module Picture : sig
     ?vp:Viewport.t ->
     ?col:Color.t ->
     ?size:float ->
+    ?font:Font.t ->
     x:float ->
     y:float ->
     string ->

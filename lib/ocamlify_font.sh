@@ -1,1 +1,1 @@
-ocamlify --var-string regular LinLibertine_R.otf --output linux_libertine.ml
+ocamlify --var-string contents $1 --output $2
