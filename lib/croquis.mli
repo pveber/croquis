@@ -97,6 +97,11 @@ module Picture : sig
     ?dy:float ->
     t -> t
 
+  val scale :
+    ?sx:float ->
+    ?sy:float ->
+    t -> t
+
   val pileup : t list -> t
 
   val vstack :

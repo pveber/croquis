@@ -260,6 +260,20 @@ module Picture = struct
         |> I.move (V2.v dx dy)
     end
 
+  let scale ?(sx = 1.) ?(sy = 1.) t =
+    object
+      method bbox =
+        let bb = t#bbox in
+        Box2.(v_mid (mid bb) (V2.v (w bb *. sx) (h bb *. sy)))
+
+      method render =
+        let center = Box2.mid t#bbox in
+        t#render
+        |> I.move V2.(neg center)
+        |> I.scale (V2.v sx sy)
+        |> I.move center
+    end
+
   module Pileup_layout = struct
     type block = {
       bbox : Box2.t ;
