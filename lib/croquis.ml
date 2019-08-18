@@ -289,6 +289,7 @@ module Picture = struct
         I.cut (path_of_box2 b) t#render
     end
 
+  (* Tetris-like layout *)
   module Pileup_layout = struct
     type block = {
       bbox : Box2.t ;
@@ -357,26 +358,33 @@ module Picture = struct
   let pileup xs = blend (Pileup_layout.make xs)
 
   module VStack_layout = struct
-    let make items =
-      let rec loop acc base_y = function
-        | [] -> List.rev acc
-        | h :: t ->
-          let height = Box2.h h.Pileup_layout.bbox in
-          let translated_image =
-            translate ~dy:(base_y -. Box2.maxy h.bbox) h.contents
-          in
-          loop (translated_image :: acc) (base_y -. height) t
+    let make alignment items =
+      let bboxes = List.map items ~f:(fun i -> i#bbox) in
+      let height = List.fold bboxes ~init:0. ~f:(fun acc bb ->
+          acc +. Box2.h bb
+        )
       in
-      match List.map items ~f:Pileup_layout.make_block with
-      | [] -> []
-      | h :: _ as xs ->
-        loop [] (Box2.maxy h.bbox) xs
+      let justify y pic bbox =
+        let dy = y -. Box2.maxy bbox in
+        let dx = match alignment with
+          | `none -> 0.
+          | `centered -> -. Box2.w bbox /. 2.
+          | `left -> -. Box2.minx bbox
+          | `right -> -. Box2.maxx bbox
+        in
+        translate ~dx ~dy pic
+      in
+      List.fold2_exn items bboxes ~init:(height /. 2., []) ~f:(fun (y, acc) pic bbox ->
+          let pic' = justify y pic bbox in
+          (y -. Box2.h bbox, pic' :: acc)
+        )
+      |> snd
+      |> List.rev
   end
 
   let vstack ?(align = `none) xs =
-    match align with
-    | `none -> blend (VStack_layout.make xs)
-    | _ -> assert false (* not implemented *)
+    VStack_layout.make align xs
+    |> blend
 end
 
 module Plot = struct
