@@ -434,19 +434,23 @@ module Layout = struct
     let view = box2_padding 0.01 pic#bbox in
     let size = size ?width ?height view in
     let image = pic#render in
-    let font = Lazy.force Font.free_sans in
-    match Vgr_pdf.otf_font (Vg_text.Font.data font) with
-    | Ok otf_font ->
-      let font f =
-        if Vg_text.Font.name font = f.Vg.Font.name then
-          otf_font
-        else
-          Vgr_pdf.font f
-      in
-      Out_channel.with_file fn ~f:(fun oc ->
-          let r = Vgr.create (Vgr_pdf.target ~font ()) (`Channel oc) in
-          ignore (Vgr.render r (`Image (V2.of_tuple size, view, image))) ;
-          ignore (Vgr.render r `End)
-        )
-    | _ -> assert false
+    let otf_font x =
+      Lazy.force x
+      |> Vg_text.Font.data
+      |> Vgr_pdf.otf_font
+      |> function
+      | Ok x -> x
+      | Error _ -> assert false
+    in
+    let font (f : Vg.Font.t) =
+      match f.name with
+      | "FreeSans" -> otf_font Font.free_sans
+      | "FreeSansBold" -> otf_font Font.free_sans_bold
+      | _ -> `Sans
+    in
+    Out_channel.with_file fn ~f:(fun oc ->
+        let r = Vgr.create (Vgr_pdf.target ~font ()) (`Channel oc) in
+        ignore (Vgr.render r (`Image (V2.of_tuple size, view, image))) ;
+        ignore (Vgr.render r `End)
+      )
 end
