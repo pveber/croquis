@@ -274,6 +274,22 @@ module Picture = struct
         |> I.move center
     end
 
+  let reshape t ~bbox =
+    object
+      method bbox = bbox
+
+      method render =
+        let src_bbox = t#bbox in
+        let src_center = Box2.mid t#bbox in
+        let dst_center = Box2.mid bbox in
+        let sx = Box2.(w bbox /. w src_bbox) in
+        let sy = Box2.(h bbox /. h src_bbox) in
+        t#render
+        |> I.move V2.(neg src_center)
+        |> I.scale (V2.v sx sy)
+        |> I.move dst_center
+    end
+  
   let path_of_box2 b =
     P.empty
     |> P.line (Box2.bl_pt b)

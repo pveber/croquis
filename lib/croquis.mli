@@ -102,6 +102,11 @@ module Picture : sig
     ?sy:float ->
     t -> t
 
+  val reshape :
+    t ->
+    bbox:box2 ->
+    t
+
   val crop : t -> box2 -> t
 
   val pileup : t list -> t
