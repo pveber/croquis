@@ -385,6 +385,35 @@ module Picture = struct
   let vstack ?(align = `none) xs =
     VStack_layout.make align xs
     |> blend
+
+  module HStack_layout = struct
+    let make alignment items =
+      let bboxes = List.map items ~f:(fun i -> i#bbox) in
+      let width = List.fold bboxes ~init:0. ~f:(fun acc bb ->
+          acc +. Box2.w bb
+        )
+      in
+      let justify x pic bbox =
+        let dx = x -. Box2.minx bbox in
+        let dy = match alignment with
+          | `none -> 0.
+          | `centered -> -. Box2.midy bbox
+          | `top -> -. Box2.maxy bbox
+          | `bottom -> -. Box2.miny bbox
+        in
+        translate ~dx ~dy pic
+      in
+      List.fold2_exn items bboxes ~init:(-. width /. 2., []) ~f:(fun (x, acc) pic bbox ->
+          let pic' = justify x pic bbox in
+          (x +. Box2.w bbox, pic' :: acc)
+        )
+      |> snd
+      |> List.rev
+  end
+
+  let hstack ?(align = `none) xs =
+    HStack_layout.make align xs
+    |> blend
 end
 
 module Plot = struct

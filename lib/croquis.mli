@@ -111,6 +111,11 @@ module Picture : sig
     t list ->
     t
 
+  val hstack :
+    ?align:[`none | `centered | `top | `bottom ] ->
+    t list ->
+    t
+  
   val text :
     ?vp:Viewport.t ->
     ?col:Color.t ->
