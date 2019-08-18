@@ -102,6 +102,8 @@ module Picture : sig
     ?sy:float ->
     t -> t
 
+  val crop : t -> box2 -> t
+
   val pileup : t list -> t
 
   val vstack :

@@ -274,6 +274,21 @@ module Picture = struct
         |> I.move center
     end
 
+  let path_of_box2 b =
+    P.empty
+    |> P.line (Box2.bl_pt b)
+    |> P.line (Box2.br_pt b)
+    |> P.line (Box2.tr_pt b)
+    |> P.line (Box2.tl_pt b)
+    |> P.line (Box2.bl_pt b)
+      
+  let crop t b =
+    object
+      method bbox = b
+      method render =
+        I.cut (path_of_box2 b) t#render
+    end
+
   module Pileup_layout = struct
     type block = {
       bbox : Box2.t ;
