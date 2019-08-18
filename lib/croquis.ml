@@ -76,10 +76,10 @@ module Font = struct
         | _ -> assert false
       )
 
-  let linux_libertine_regular = embedded_load Linux_libertine.contents
-  let helvetica_bold = embedded_load Helvetica_bold.contents
+  let free_sans = embedded_load Free_sans.contents
+  let free_sans_bold = embedded_load Free_sans_bold.contents
 
-  let default = linux_libertine_regular
+  let default = free_sans
 end
 
 module Picture = struct
@@ -434,7 +434,7 @@ module Layout = struct
     let view = box2_padding 0.01 pic#bbox in
     let size = size ?width ?height view in
     let image = pic#render in
-    let font = Lazy.force Font.linux_libertine_regular in
+    let font = Lazy.force Font.free_sans in
     match Vgr_pdf.otf_font (Vg_text.Font.data font) with
     | Ok otf_font ->
       let font f =

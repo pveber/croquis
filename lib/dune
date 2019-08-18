@@ -2,14 +2,14 @@
  (name croquis)
  (public_name croquis)
  (libraries core_kernel otfm vg vg.pdf)
- (private_modules Linux_libertine Vg_text))
+ (private_modules Free_sans Free_sans_bold Vg_text))
 
 (rule
-  (target linux_libertine.ml)
-  (deps (file ocamlify_font.sh) (:font LinLibertine_R.otf))
+  (target free_sans.ml)
+  (deps (file ocamlify_font.sh) (:font FreeSans.otf))
   (action (run bash ocamlify_font.sh %{font} %{target})))
 
 (rule
-  (target helvetica_bold.ml)
-  (deps (file ocamlify_font.sh) (:font Helvetica-Bold.otf))
+  (target free_sans_bold.ml)
+  (deps (file ocamlify_font.sh) (:font FreeSansBold.otf))
   (action (run bash ocamlify_font.sh %{font} %{target})))

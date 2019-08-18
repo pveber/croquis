@@ -41,8 +41,8 @@ module Font : sig
   val descender : t -> float
   val glyph_bbox : t -> box2
   val default : t
-  val helvetica_bold : t
-  val linux_libertine_regular : t
+  val free_sans : t
+  val free_sans_bold : t
 end
 
 type thickness = [
