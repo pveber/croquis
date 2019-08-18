@@ -368,7 +368,7 @@ module Picture = struct
         let dy = y -. Box2.maxy bbox in
         let dx = match alignment with
           | `none -> 0.
-          | `centered -> -. Box2.w bbox /. 2.
+          | `centered -> -. Box2.midx bbox
           | `left -> -. Box2.minx bbox
           | `right -> -. Box2.maxx bbox
         in
