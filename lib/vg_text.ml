@@ -39,13 +39,10 @@ module Font = struct
 
   let ascender fi = float fi.hhea.hhea_ascender /. float fi.units_per_em
   let descender fi = float fi.hhea.hhea_descender /. float fi.units_per_em
-  let glyph_bbox fi =
-    let { Otfm.head_xmin ; head_xmax ; head_ymin ; head_ymax ; _ } = fi.head in
-    let xmin = float head_xmin /. float fi.units_per_em in
-    let xmax = float head_xmax /. float fi.units_per_em in
-    let ymin = float head_ymin /. float fi.units_per_em in
-    let ymax = float head_ymax /. float fi.units_per_em in
-    Box2.v (V2.v xmin ymin) (V2.v (xmax -. xmin) (ymax -. ymin))
+  let xmin fi = float fi.head.head_xmin /. float fi.units_per_em
+  let ymin fi = float fi.head.head_ymin /. float fi.units_per_em
+  let xmax fi = float fi.head.head_xmax /. float fi.units_per_em
+  let ymax fi = float fi.head.head_ymax /. float fi.units_per_em
 
   let string_of_file inf =
     try
@@ -164,7 +161,7 @@ let cut ?(col = Color.black) ?(size = 12.) font text =
   i, Box2.v (V2.v 0. base) (Size2.v width height)
 
 let bbox ~size font text =
-  let base = size *. Font.descender font in
-  let height = size *. Font.ascender font -. base in
+  let under = size *. Font.ymin font in
+  let above = size *. Font.ymax font in
   let _, _, width = layout font ~font_size:size text in
-  Box2.v (V2.v 0. base) (Size2.v width height)
+  Box2.v (V2.v 0. under) (Size2.v width (above -. under))

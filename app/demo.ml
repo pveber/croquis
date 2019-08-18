@@ -3,7 +3,11 @@ open Core
 open Croquis
 
 let single_letter () =
-  Picture.text ~x:5. ~y:0. "croquis"
+  let open Picture in
+  blend [
+    points ~col:Color.red ~x:[|3.|] ~y:[|4.|] () ;
+    text ~size:0.5 ~x:3. ~y:4. "croquis" ~font:Croquis.Font.free_sans_bold;
+  ]
 
 let vstack () =
   let open Picture in

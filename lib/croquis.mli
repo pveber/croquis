@@ -39,7 +39,10 @@ module Font : sig
 
   val ascender : t -> float
   val descender : t -> float
-  val glyph_bbox : t -> box2
+  val xmin : t -> float
+  val ymin : t -> float
+  val xmax : t -> float
+  val ymax : t -> float
   val default : t
   val free_sans : t
   val free_sans_bold : t

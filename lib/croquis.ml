@@ -67,7 +67,10 @@ module Font = struct
 
   let ascender x = Vg_text.Font.ascender (Lazy.force x)
   let descender x = Vg_text.Font.descender (Lazy.force x)
-  let glyph_bbox x = Vg_text.Font.glyph_bbox (Lazy.force x)
+  let xmin x = Vg_text.Font.xmin (Lazy.force x)
+  let xmax x = Vg_text.Font.xmax (Lazy.force x)
+  let ymin x = Vg_text.Font.ymin (Lazy.force x)
+  let ymax x = Vg_text.Font.ymax (Lazy.force x)
 
   let embedded_load s =
     Lazy.from_fun (fun () -> 
@@ -237,16 +240,16 @@ module Picture = struct
     let x = Viewport.scale_x vp x in
     let y = Viewport.scale_y vp y in
     let delta bb =
-      Box2.w bb /. 2., Vg_text.Font.(ascender font +. descender font) /. 2.
+      Box2.w bb /. 2., Vg_text.Font.(ymax font +. ymin font) *. size /. 2.
     in
     object
       method render =
         let img, bb = Vg_text.cut ~col:col ~size:size font text in
-        let dx, dy =  delta bb in
-        I.move (Viewport.v2scale vp (x -. dx) (y -. dy)) img
+        let dx, dy = delta bb in
+        I.move (V2.v (x -. dx) (y -. dy)) img
 
       method bbox =
-        let bb = Vg_text.bbox ~size:size font text in
+        let bb = Vg_text.bbox ~size font text in
         let dx, dy = delta bb in
         Box2.move (V2.v (x -. dx) (y -. dy)) bb
     end

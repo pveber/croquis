@@ -8,7 +8,10 @@ module Font : sig
   val data : t -> string
   val ascender : t -> float
   val descender : t -> float
-  val glyph_bbox : t -> box2
+  val xmin : t -> float
+  val ymin : t -> float
+  val xmax : t -> float
+  val ymax : t -> float
 
   val load_from_string :
     string ->
