@@ -199,12 +199,12 @@ module Picture = struct
           | [] | [ _ ] -> I.void
           | (ox, oy) :: (_ :: _ as t) ->
             let tip = match arrow_head with
-              | None -> Viewport.v2scale vp ox oy
+              | None -> V2.v ox oy
               | Some h -> h#bottom
             in
             let path =
               List.fold t ~init:(P.empty |> P.sub tip) ~f:(fun acc (x, y) ->
-                  P.line (Viewport.v2scale vp x y) acc
+                  P.line (V2.v x y) acc
                 )
             in
             let area = `O { P.o with P.width = thickness_value thickness } in
