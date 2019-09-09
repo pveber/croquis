@@ -122,10 +122,10 @@ module Picture = struct
     let ymax = Viewport.scale_y vp ymax in
     object
       method render =
-        let sw = Viewport.v2scale vp xmin ymin in
-        let nw = Viewport.v2scale vp xmin ymax in
-        let ne = Viewport.v2scale vp xmax ymax in
-        let se = Viewport.v2scale vp xmax ymin in
+        let sw = V2.v xmin ymin in
+        let nw = V2.v xmin ymax in
+        let ne = V2.v xmax ymax in
+        let se = V2.v xmax ymin in
         let p =
           P.empty
           |> P.sub sw
