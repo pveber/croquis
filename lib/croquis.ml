@@ -199,7 +199,7 @@ module Picture = struct
           | [] | [ _ ] -> I.void
           | (ox, oy) :: (_ :: _ as t) ->
             let tip = match arrow_head with
-              | None -> V2.v ox oy
+              | None -> Viewport.v2scale vp ox oy
               | Some h -> h#bottom
             in
             let path =
