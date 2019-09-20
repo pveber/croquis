@@ -12,4 +12,5 @@
   (synopsis "Vector graphics library")
   (description "")
   (depends
+    otfm
     vg))
