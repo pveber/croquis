@@ -12,5 +12,6 @@
   (synopsis "Vector graphics library")
   (description "")
   (depends
+    core_kernel
     otfm
     vg))
