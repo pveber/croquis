@@ -9,6 +9,9 @@ homepage: "https://github.com/pveber/croquis"
 bug-reports: "https://github.com/pveber/croquis/issues"
 depends: [
   "dune" {>= "1.11"}
+  "core_kernel"
+  "ocamlify"
+  "otfm"
   "vg"
 ]
 build: [

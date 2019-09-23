@@ -13,5 +13,6 @@
   (description "")
   (depends
     core_kernel
+    ocamlify
     otfm
     vg))
