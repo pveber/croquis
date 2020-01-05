@@ -316,6 +316,7 @@ module Picture = struct
     }
 
     let block_intersects b1 b2 =
+      let open Float in
       let b1 = b1.bbox in
       let b2 = b2.bbox in
       Box2.(
